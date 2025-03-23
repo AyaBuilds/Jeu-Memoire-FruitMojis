@@ -1,0 +1,219 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu de Mémoire</title>
+    <link href="https://fonts.googleapis.com/css2?family=Parisienne&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #FADADD; /* Rose poudré */
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .welcome {
+            font-family: 'Parisienne', cursive; /* Typographie Parisienne */
+            font-size: 30px;
+            font-weight: bold;
+            animation: fadeIn 3s ease-in-out;
+            margin-top: 20px;
+        }
+        .game-container {
+            display: grid;
+            grid-template-columns: repeat(6, 100px);
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .card {
+            width: 100px;
+            height: 100px;
+            background-color: #2c3e50; /* Noir pour les cartes */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #2c3e50; /* Noir pour le texte avant de le révéler */
+            cursor: pointer;
+        }
+        .revealed {
+            background-color: #3498db;
+            color: white;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .confetti {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .attempts {
+            font-size: 20px;
+            margin-top: 15px;
+            font-weight: bold;
+            display: none;
+        }
+        .play-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .play-button:hover {
+            background-color: #219150;
+        }
+        .countdown {
+            font-size: 24px;
+            font-weight: bold;
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="welcome">Bienvenue sur le jeu de mémoire FruitMojis par AyaBuilds</h1>
+    <button class="play-button" onclick="startGame()">Jouer</button>
+    <div class="attempts">Tentatives restantes : <span id="attemptsCount">6</span></div>
+    <div id="countdown" class="countdown" style="display: none;">Attention, il te reste <span id="secondsRemaining">10</span> secondes avant que les cartes se retournent.</div>
+    <div class="game-container" id="gameBoard"></div>
+    <canvas class="confetti" id="confettiCanvas"></canvas>
+    
+    <script>
+        const emojis = ['🍎', '🍌', '🍇', '🍉', '🍓', '🍊', '🍒', '🥝', '🍍', '🍑', '🍏', '🥭',
+                        '🍎', '🍌', '🍇', '🍉', '🍓', '🍊', '🍒', '🥝', '🍍', '🍑', '🍏', '🥭'];
+        let shuffledEmojis = emojis.sort(() => Math.random() - 0.5);
+        let selectedCards = [];
+        let matchedPairs = 0;
+        let attempts = 6;  // 6 tentatives
+        const attemptsDisplay = document.getElementById("attemptsCount");
+        const gameBoard = document.getElementById("gameBoard");
+        const countdownDisplay = document.getElementById("countdown");
+        const secondsRemainingDisplay = document.getElementById("secondsRemaining");
+
+        // Générer les cartes masquées au départ
+        shuffledEmojis.forEach((emoji, index) => {
+            let card = document.createElement("div");
+            card.classList.add("card");
+            card.dataset.index = index;
+            card.dataset.emoji = emoji;
+            gameBoard.appendChild(card);
+        });
+
+        function startGame() {
+            document.querySelector(".play-button").style.display = "none";
+            document.querySelector(".attempts").style.display = "block";
+
+            // Afficher le compte à rebours
+            countdownDisplay.style.display = "block";
+
+            let secondsRemaining = 10;
+            secondsRemainingDisplay.textContent = secondsRemaining;
+
+            // Diminuer le compte à rebours chaque seconde
+            const countdownInterval = setInterval(() => {
+                secondsRemaining--;
+                secondsRemainingDisplay.textContent = secondsRemaining;
+
+                if (secondsRemaining === 0) {
+                    clearInterval(countdownInterval); // Arrêter le compte à rebours
+                    startCardFlip(); // Lancer le retournement des cartes après le compte à rebours
+                }
+            }, 1000);
+
+            // Révèle les cartes pendant 10 secondes
+            document.querySelectorAll(".card").forEach(card => {
+                card.textContent = card.dataset.emoji;
+                card.classList.add("revealed");
+            });
+        }
+
+        function startCardFlip() {
+            setTimeout(() => {
+                document.querySelectorAll(".card").forEach(card => {
+                    card.textContent = "";
+                    card.classList.remove("revealed");
+                    card.addEventListener("click", flipCard);
+                });
+            }, 1000); // 1 seconde après la fin du compte à rebours
+        }
+
+        function flipCard() {
+            if (selectedCards.length < 2 && this.textContent === "") {
+                this.textContent = this.dataset.emoji;
+                this.classList.add("revealed");
+                selectedCards.push(this);
+            }
+            if (selectedCards.length === 2) {
+                setTimeout(checkMatch, 500);
+            }
+        }
+
+        function checkMatch() {
+            if (selectedCards[0].dataset.emoji === selectedCards[1].dataset.emoji) {
+                matchedPairs++;
+                selectedCards = [];
+                if (matchedPairs === emojis.length / 2) {
+                    showConfetti();
+                    alert("Bravo! Vous avez réussi!");
+                }
+            } else {
+                selectedCards.forEach(card => {
+                    card.textContent = "";
+                    card.classList.remove("revealed");
+                });
+                selectedCards = [];
+                attempts--;
+                attemptsDisplay.textContent = attempts;
+                if (attempts === 0) {
+                    alert("Vous avez perdu! Le jeu recommence.");
+                    location.reload();
+                }
+            }
+        }
+
+        function showConfetti() {
+            const canvas = document.getElementById("confettiCanvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            let confetti = [];
+            for (let i = 0; i < 100; i++) {
+                confetti.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 5 + 2,
+                    dx: Math.random() * 2 - 1,
+                    dy: Math.random() * 2 + 1,
+                    color: `hsl(${Math.random() * 360}, 100%, 50%)`
+                });
+            }
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                confetti.forEach((p, i) => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+                    p.x += p.dx;
+                    p.y += p.dy;
+                    if (p.y > canvas.height) confetti[i].y = 0;
+                });
+                requestAnimationFrame(draw);
+            }
+            draw();
+        }
+    </script>
+</body>
+</html>
